@@ -23,6 +23,13 @@ import org.apache.ibatis.cache.Cache;
 public class CacheRefResolver {
 	private final MapperBuilderAssistant assistant;
 	private final String cacheRefNamespace;
+
+	/**
+	 * 注册缓存应用，主要是在 configuration.caches中引用cache,
+	 * configuration.caches 的结构为 Map<cache-ref.namespace, Cache>
+	 * @param assistant
+	 * @param cacheRefNamespace
+	 */
 	public CacheRefResolver(MapperBuilderAssistant assistant, String cacheRefNamespace) {
 		this.assistant = assistant;
 		this.cacheRefNamespace = cacheRefNamespace;

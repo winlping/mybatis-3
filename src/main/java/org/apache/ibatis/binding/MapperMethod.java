@@ -45,6 +45,12 @@ public class MapperMethod {
     this.method = new MethodSignature(config, method);
   }
 
+  /**
+   * 根据不同的数据哭操作类型解析SQL语句
+   * @param sqlSession
+   * @param args
+   * @return
+   */
   public Object execute(SqlSession sqlSession, Object[] args) {
     Object result;
     if (SqlCommandType.INSERT == command.getType()) {
@@ -231,12 +237,25 @@ public class MapperMethod {
       this.returnsMany = (configuration.getObjectFactory().isCollection(this.returnType) || this.returnType.isArray());
       this.mapKey = getMapKey(method);
       this.returnsMap = (this.mapKey != null);
+      /**
+       * 判断方法参数上是否存在@Param 注解
+       */
       this.hasNamedParameters = hasNamedParams(method);
       this.rowBoundsIndex = getUniqueParamIndex(method, RowBounds.class);
       this.resultHandlerIndex = getUniqueParamIndex(method, ResultHandler.class);
+      /**
+       * 解析接口方法的参数命名或者参数顺序下标
+       */
       this.params = Collections.unmodifiableSortedMap(getParams(method, this.hasNamedParameters));
     }
 
+    /**
+     * 解析实际参数
+     * (name,value),(1,value1)、(param1,value)、(param2,value1)
+     * 也就是说可以用 param+序号来填值
+     * @param args
+     * @return
+     */
     public Object convertArgsToSqlCommandParam(Object[] args) {
       final int paramCount = params.size();
       if (args == null || paramCount == 0) {
@@ -321,12 +340,23 @@ public class MapperMethod {
       return mapKey;
     }
 
+    /**
+     * 解析方法中参数的命名或者参数顺序下标，最终形成
+     * (0，name)、(1,2)、(2,name2)
+     * 这种类型
+     * @param method
+     * @param hasNamedParameters
+     * @return
+     */
     private SortedMap<Integer, String> getParams(Method method, boolean hasNamedParameters) {
       final SortedMap<Integer, String> params = new TreeMap<Integer, String>();
       final Class<?>[] argTypes = method.getParameterTypes();
       for (int i = 0; i < argTypes.length; i++) {
         if (!RowBounds.class.isAssignableFrom(argTypes[i]) && !ResultHandler.class.isAssignableFrom(argTypes[i])) {
           String paramName = String.valueOf(params.size());
+          /**
+           * 如果没有使用 @Param 注解标明参数，那么使用下标
+           */
           if (hasNamedParameters) {
             paramName = getParamNameFromAnnotation(method, i, paramName);
           }

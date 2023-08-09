@@ -59,6 +59,14 @@ public class MapperBuilderAssistant extends BaseBuilder {
   private Cache currentCache;
   private boolean unresolvedCacheRef; // issue #676
 
+  /**
+   * 注册mapper构建器助理
+   * 其中包含了本地线程变量异常上下文：ErrorContext
+   * 别名和类型处理器
+   * 此时并未设置当前命名空间和 currentCache、unresolvedCacheRef
+   * @param configuration
+   * @param resource
+   */
   public MapperBuilderAssistant(Configuration configuration, String resource) {
     super(configuration);
     ErrorContext.instance().resource(resource);
@@ -82,6 +90,13 @@ public class MapperBuilderAssistant extends BaseBuilder {
     this.currentNamespace = currentNamespace;
   }
 
+  /**
+   *
+   * 如果base 中包含 . 那么采用，否则将追加 namespace.base
+   * @param base
+   * @param isReference
+   * @return
+   */
   public String applyCurrentNamespace(String base, boolean isReference) {
     if (base == null) return null;
     if (isReference) {
@@ -113,6 +128,17 @@ public class MapperBuilderAssistant extends BaseBuilder {
     }
   }
 
+  /**
+   * 缓存命名空间来自 <mapper namespace=""/>
+   * 设置缓存命名空间，ID 同命名空间
+   * @param typeClass 缓存的容器，默认是永久：PerpetualCache
+   * @param evictionClass 缓存淘汰策略，默认是先进先出：LruCache
+   * @param flushInterval 缓存刷新时间
+   * @param size 缓存大小
+   * @param readWrite 缓存是否读写
+   * @param props 缓存参数
+   * @return
+   */
   public Cache useNewCache(Class<? extends Cache> typeClass,
       Class<? extends Cache> evictionClass,
       Long flushInterval,
@@ -134,6 +160,16 @@ public class MapperBuilderAssistant extends BaseBuilder {
     return cache;
   }
 
+  /**
+   * 构建 ParameterMap
+   * 其中包含一个类型和类型中所有参数的 ParameterMapping
+   * 最终添加到 configuration 中的 ParameterMap<Id， Identify>,
+   * 其中，id包含namespace:  namespce
+   * @param id
+   * @param parameterClass
+   * @param parameterMappings
+   * @return
+   */
   public ParameterMap addParameterMap(String id, Class<?> parameterClass, List<ParameterMapping> parameterMappings) {
     id = applyCurrentNamespace(id, false);
     ParameterMap.Builder parameterMapBuilder = new ParameterMap.Builder(configuration, id, parameterClass, parameterMappings);
@@ -142,6 +178,18 @@ public class MapperBuilderAssistant extends BaseBuilder {
     return parameterMap;
   }
 
+  /**
+   * 解析 parameterMap 中的设置，为每一个类型中的属性设置一个ParameterMapping
+   * @param parameterType
+   * @param property
+   * @param javaType
+   * @param jdbcType
+   * @param resultMap
+   * @param parameterMode
+   * @param typeHandler
+   * @param numericScale
+   * @return
+   */
   public ParameterMapping buildParameterMapping(
       Class<?> parameterType,
       String property,

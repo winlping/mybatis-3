@@ -105,6 +105,10 @@ public class ParameterMapping {
       return parameterMapping;
     }
 
+    /**
+     * 如果 javaType 为空，那么resultMapId 不能为空
+     * 如果 javaType 不为空，那么typeHandler 不能为空
+     */
     private void validate() {
       if (ResultSet.class.equals(parameterMapping.javaType)) {
         if (parameterMapping.resultMapId == null) { 
@@ -121,6 +125,10 @@ public class ParameterMapping {
       }
     }
 
+    /**
+     * 解析该属性默认的 类型解析器
+     * 如果没有指定，那么将从全局的类型注册器中获取：按照 jdbcType 和 javaType
+     */
     private void resolveTypeHandler() {
       if (parameterMapping.typeHandler == null && parameterMapping.javaType != null) {
         Configuration configuration = parameterMapping.configuration;

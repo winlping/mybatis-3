@@ -77,8 +77,8 @@ public class XMLStatementBuilder extends BaseBuilder {
     String nodeName = context.getNode().getNodeName();
     SqlCommandType sqlCommandType = SqlCommandType.valueOf(nodeName.toUpperCase(Locale.ENGLISH));
     boolean isSelect = sqlCommandType == SqlCommandType.SELECT;
-    boolean flushCache = context.getBooleanAttribute("flushCache", !isSelect);
-    boolean useCache = context.getBooleanAttribute("useCache", isSelect);
+    boolean flushCache = context.getBooleanAttribute("flushCache", !isSelect);// 查询时不用刷新缓存
+    boolean useCache = context.getBooleanAttribute("useCache", isSelect);// 查询时使用缓存，默认开启
     boolean resultOrdered = context.getBooleanAttribute("resultOrdered", false);
 
     // Include Fragments before parsing

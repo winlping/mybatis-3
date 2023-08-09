@@ -86,10 +86,17 @@ public class CacheBuilder {
     Cache cache = newBaseCacheInstance(implementation, id);
     setCacheProperties(cache);
     if (PerpetualCache.class.equals(cache.getClass())) { // issue #352, do not apply decorators to custom caches
-      for (Class<? extends Cache> decorator : decorators) {
+      /**
+       * 静态代理来代理缓存，多个代理可叠加
+       */
+      for (Class<? extends Cache> decorator : decorators) {//
         cache = newCacheDecoratorInstance(decorator, cache);
         setCacheProperties(cache);
       }
+      /**
+       * 除了自定义添加的代理之外
+       * 还设置了标准的的代理
+       */
       cache = setStandardDecorators(cache);
     } else if (!LoggingCache.class.isAssignableFrom(cache.getClass())) {
       cache = new LoggingCache(cache);
@@ -106,6 +113,19 @@ public class CacheBuilder {
     }
   }
 
+  /**
+   * SynchronizedCache(
+   *    LoggingCache(
+   *      [SerializedCache(
+   *          ScheduledCache(
+   *            自定义代理
+   *          )
+   *      )]
+   *    )
+   * )
+   * @param cache
+   * @return
+   */
   private Cache setStandardDecorators(Cache cache) {
     try {
       MetaObject metaCache = SystemMetaObject.forObject(cache);

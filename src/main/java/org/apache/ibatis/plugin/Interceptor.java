@@ -26,6 +26,10 @@ public interface Interceptor {
 
   Object plugin(Object target);
 
+  /**
+   * 存放插件的属性
+   * @param properties
+   */
   void setProperties(Properties properties);
 
 }

@@ -102,6 +102,9 @@ public class TypeAliasRegistry {
 
   @SuppressWarnings("unchecked")
   // throws class cast exception as well if types cannot be assigned
+  /**
+   * 到TYPE_ALIASES 中查找，没有的话在通过 类加载器加载
+   */
   public <T> Class<T> resolveAlias(String string) {
     try {
       if (string == null) return null;
@@ -118,10 +121,19 @@ public class TypeAliasRegistry {
     }
   }
 
+  /**
+   * 指定包名下，是Object 的所有子类
+   * @param packageName
+   */
   public void registerAliases(String packageName){
     registerAliases(packageName, Object.class);
   }
 
+  /**
+   *  指定包名下，superType 的所有子类
+   * @param packageName
+   * @param superType
+   */
   public void registerAliases(String packageName, Class<?> superType){
     ResolverUtil<Class<?>> resolverUtil = new ResolverUtil<Class<?>>();
     resolverUtil.find(new ResolverUtil.IsA(superType), packageName);
@@ -135,6 +147,10 @@ public class TypeAliasRegistry {
     }
   }
 
+  /**
+   * 如果类上存在
+   * @link Alias 则取注解上的值作为别名
+   */
   public void registerAlias(Class<?> type) {
     String alias = type.getSimpleName();
     Alias aliasAnnotation = type.getAnnotation(Alias.class);
@@ -144,6 +160,9 @@ public class TypeAliasRegistry {
     registerAlias(alias, type);
   }
 
+  /**
+   * 注册类型和别名
+   */
   public void registerAlias(String alias, Class<?> value) {
     if (alias == null) throw new TypeException("The parameter alias cannot be null");
     String key = alias.toLowerCase(Locale.ENGLISH); // issue #748

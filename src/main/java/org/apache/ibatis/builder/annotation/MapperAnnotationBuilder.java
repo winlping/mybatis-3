@@ -245,7 +245,7 @@ public class MapperAnnotationBuilder {
 
   void parseStatement(Method method) {
     Class<?> parameterTypeClass = getParameterType(method);
-    LanguageDriver languageDriver = getLanguageDriver(method);
+    LanguageDriver languageDriver = getLanguageDriver(method);// SQL语法解析起
     SqlSource sqlSource = getSqlSourceFromAnnotations(method, parameterTypeClass, languageDriver);
     if (sqlSource != null) {
       Options options = method.getAnnotation(Options.class);

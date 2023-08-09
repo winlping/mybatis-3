@@ -73,6 +73,14 @@ public class XNode {
     return builder.toString();
   }
 
+  /**
+   * 逐级向上取 id ,组成唯一标识号
+   * 如果ID 不存在，则取value， 否则再取 property，最后为 null
+   * 如果存在. 则替换为 _
+   * 最终形成的格式为
+   * parentNodeName[parentId]_childNodeName[childId]
+   * @return
+   */
   public String getValueBasedIdentifier() {
     StringBuilder builder = new StringBuilder();
     XNode current = this;

@@ -120,6 +120,13 @@ public class XPathParser {
     this.document = createDocument(new InputSource(reader));
   }
 
+  /**
+   * 创建解析对象和文档对象
+   * @param inputStream mapper 文件流
+   * @param validation 是否校验文件
+   * @param variables 配置文件中定义的变量
+   * @param entityResolver mapper 文件解析器
+   */
   public XPathParser(InputStream inputStream, boolean validation, Properties variables, EntityResolver entityResolver) {
     commonConstructor(validation, variables, entityResolver);
     this.document = createDocument(new InputSource(inputStream));
@@ -225,6 +232,11 @@ public class XPathParser {
     }
   }
 
+  /**
+   * 创建文档对象
+   * @param inputSource
+   * @return
+   */
   private Document createDocument(InputSource inputSource) {
     // important: this must only be called AFTER common constructor
     try {

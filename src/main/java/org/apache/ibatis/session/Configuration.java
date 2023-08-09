@@ -94,22 +94,47 @@ public class Configuration {
 
   protected Environment environment;
 
+  /**
+   * 允许在嵌套语句中使用分页（RowBounds）。如果允许使用则设置为false。
+   */
   protected boolean safeRowBoundsEnabled = false;
   protected boolean safeResultHandlerEnabled = true;
+  /**
+   * 是否开启自动驼峰命名规则（camel case）映射，即从经典数据库列名 A_COLUMN 到经典 Java 属性名 aColumn 的类似映射。
+   */
   protected boolean mapUnderscoreToCamelCase = false;
+  /**
+   * 当开启时，任何方法的调用都会加载该对象的所有属性。否则，每个属性会按需加载（参考lazyLoadTriggerMethods).
+   */
   protected boolean aggressiveLazyLoading = true;
+  /**
+   * 是否允许单一语句返回多结果集（需要兼容驱动）。
+   */
   protected boolean multipleResultSetsEnabled = true;
+  /**
+   * 	允许 JDBC 支持自动生成主键，需要驱动兼容。 如果设置为 true 则这个设置强制使用自动生成主键，尽管一些驱动不能兼容但仍可正常工作（比如 Derby）。
+   */
   protected boolean useGeneratedKeys = false;
+  /**
+   * 使用列标签代替列名。不同的驱动在这方面会有不同的表现， 具体可参考相关驱动文档或通过测试这两种不同的模式来观察所用驱动的结果。
+   */
   protected boolean useColumnLabel = true;
   protected boolean cacheEnabled = true;
+  /**
+   * 指定动态 SQL 生成的默认语言
+   */
   protected boolean callSettersOnNulls = false;
   protected String logPrefix;
   protected Class <? extends Log> logImpl;
   protected LocalCacheScope localCacheScope = LocalCacheScope.SESSION;
   protected JdbcType jdbcTypeForNull = JdbcType.OTHER;
   protected Set<String> lazyLoadTriggerMethods = new HashSet<String>(Arrays.asList(new String[] { "equals", "clone", "hashCode", "toString" }));
+  /**
+   * 设置超时时间，它决定驱动等待数据库响应的秒数。
+   */
   protected Integer defaultStatementTimeout;
   protected Integer defaultFetchSize;
+  /** 配置默认的执行器。SIMPLE 就是普通的执行器；REUSE 执行器会重用预处理语句（prepared statements）； BATCH 执行器将重用语句并执行批量更新。*/
   protected ExecutorType defaultExecutorType = ExecutorType.SIMPLE;
   protected AutoMappingBehavior autoMappingBehavior = AutoMappingBehavior.PARTIAL;
 
@@ -473,6 +498,16 @@ public class Configuration {
     return resultSetHandler;
   }
 
+  /**
+   * 替换参数，并且执行插件
+   * @param executor
+   * @param mappedStatement
+   * @param parameterObject
+   * @param rowBounds
+   * @param resultHandler
+   * @param boundSql
+   * @return
+   */
   public StatementHandler newStatementHandler(Executor executor, MappedStatement mappedStatement, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) {
     StatementHandler statementHandler = new RoutingStatementHandler(executor, mappedStatement, parameterObject, rowBounds, resultHandler, boundSql);
     statementHandler = (StatementHandler) interceptorChain.pluginAll(statementHandler);
@@ -656,6 +691,11 @@ public class Configuration {
     mapperRegistry.addMappers(packageName);
   }
 
+  /**
+   * 添加映射器
+   * @param type
+   * @param <T>
+   */
   public <T> void addMapper(Class<T> type) {
     mapperRegistry.addMapper(type);
   }

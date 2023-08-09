@@ -56,6 +56,12 @@ public class MapperRegistry {
     return knownMappers.containsKey(type);
   }
 
+  /**
+   * 必须时接口类型，不能重复注册
+   *
+   * @param type
+   * @param <T>
+   */
   public <T> void addMapper(Class<T> type) {
     if (type.isInterface()) {
       if (hasMapper(type)) {
@@ -63,6 +69,9 @@ public class MapperRegistry {
       }
       boolean loadCompleted = false;
       try {
+        /**
+         * 注册mapper代理工厂
+         */
         knownMappers.put(type, new MapperProxyFactory<T>(type));
         // It's important that the type is added before the parser is run
         // otherwise the binding may automatically be attempted by the

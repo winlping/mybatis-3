@@ -74,6 +74,13 @@ public class XMLMapperBuilder extends BaseBuilder {
     this.builderAssistant.setCurrentNamespace(namespace);
   }
 
+  /**
+   *
+   * @param inputStream mapper文件流
+   * @param configuration 配置对象
+   * @param resource mapper文件源
+   * @param sqlFragments
+   */
   public XMLMapperBuilder(InputStream inputStream, Configuration configuration, String resource, Map<String, XNode> sqlFragments) {
     this(new XPathParser(inputStream, true, configuration.getVariables(), new XMLMapperEntityResolver()),
         configuration, resource, sqlFragments);
@@ -87,6 +94,9 @@ public class XMLMapperBuilder extends BaseBuilder {
     this.resource = resource;
   }
 
+  /**
+   * 解析mapper.xml文件
+   */
   public void parse() {
     if (!configuration.isResourceLoaded(resource)) {
       configurationElement(parser.evalNode("/mapper"));
@@ -103,12 +113,24 @@ public class XMLMapperBuilder extends BaseBuilder {
     return sqlFragments.get(refid);
   }
 
+  /**
+   * 解析mapper.xml 文件的 mapper节点
+   * 每个mapper 必须有namespace
+   * 解析 cache-ref 节点 仅一个
+   * 解析 cache 节点 仅一个
+   * 解析 parameterMap 节点 多个
+   * 解析 resultMap 节点 多个
+   * 解析 sql 节点 多个
+   * 解析 select|insert|update|delete 节点 多个
+   * @param context
+   */
   private void configurationElement(XNode context) {
     try {
       String namespace = context.getStringAttribute("namespace");
       if (namespace.equals("")) {
     	  throw new BuilderException("Mapper's namespace cannot be empty");
       }
+      // 设置命名空间 到 mapper助理
       builderAssistant.setCurrentNamespace(namespace);
       cacheRefElement(context.evalNode("cache-ref"));
       cacheElement(context.evalNode("cache"));
@@ -121,6 +143,10 @@ public class XMLMapperBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   * 解析所有 DML到 mappedStatement
+   * @param list
+   */
   private void buildStatementFromContext(List<XNode> list) {
     if (configuration.getDatabaseId() != null) {
       buildStatementFromContext(list, configuration.getDatabaseId());
@@ -184,6 +210,16 @@ public class XMLMapperBuilder extends BaseBuilder {
 	  }
   }
 
+  /**
+   * 以命名空间存储 cache-ref的 namespace, configuration中Map<String, String> cacheRefMap
+   * 其中通过助理《builderAssistant》来操作configuration 中的caches
+   *
+   * <!ELEMENT cache-ref EMPTY>
+   * <!ATTLIST cache-ref
+   * namespace CDATA #REQUIRED
+   * >
+   * @param context
+   */
   private void cacheRefElement(XNode context) {
     if (context != null) {
       configuration.addCacheRef(builderAssistant.getCurrentNamespace(), context.getStringAttribute("namespace"));
@@ -191,25 +227,78 @@ public class XMLMapperBuilder extends BaseBuilder {
       try {
     	  cacheRefResolver.resolveCacheRef();
       } catch (IncompleteElementException e) {
+        /**
+         * 如果 configuration.caches中不存在该命名空间的cache，那么登记到configuration.incompleteCacheRefs
+          */
     	  configuration.addIncompleteCacheRef(cacheRefResolver);
       }
     }
   }
 
+  /**
+   * 解析 cache 节点
+   *
+   * <!ELEMENT cache (property*)>
+   * <!ATTLIST cache
+   * type CDATA #IMPLIED
+   * eviction CDATA #IMPLIED
+   * flushInterval CDATA #IMPLIED
+   * size CDATA #IMPLIED
+   * readOnly CDATA #IMPLIED
+   * >
+   * @param context
+   * @throws Exception
+   */
   private void cacheElement(XNode context) throws Exception {
     if (context != null) {
+      /**
+       * 永久缓存
+       */
       String type = context.getStringAttribute("type", "PERPETUAL");
       Class<? extends Cache> typeClass = typeAliasRegistry.resolveAlias(type);
+      /**
+       * 先进先出策略
+       */
       String eviction = context.getStringAttribute("eviction", "LRU");
       Class<? extends Cache> evictionClass = typeAliasRegistry.resolveAlias(eviction);
+      /**
+       * 刷新时间
+       */
       Long flushInterval = context.getLongAttribute("flushInterval");
+      /**
+       * 缓存大小， 默认在缓存实现中：1024
+       */
       Integer size = context.getIntAttribute("size");
+      /**
+       * 是否仅读，默认可读写
+       */
       boolean readWrite = !context.getBooleanAttribute("readOnly", false);
       Properties props = context.getChildrenAsProperties();
       builderAssistant.useNewCache(typeClass, evictionClass, flushInterval, size, readWrite, props);
     }
   }
 
+  /**
+   * <!ELEMENT parameterMap (parameter+)?>
+   * <!ATTLIST parameterMap
+   * id CDATA #REQUIRED  参数ID
+   * type CDATA #REQUIRED  参数类型
+   * >
+   *
+   * <!ELEMENT parameter EMPTY>
+   * <!ATTLIST parameter
+   * property CDATA #REQUIRED 属性名
+   * javaType CDATA #IMPLIED  java类型
+   * jdbcType CDATA #IMPLIED  JDBC类型
+   * mode (IN | OUT | INOUT) #IMPLIED 输入输出
+   * resultMap CDATA #IMPLIED 结果映射
+   * scale CDATA #IMPLIED
+   * typeHandler CDATA #IMPLIED  类型转换器
+   * >
+   *
+   * @param list
+   * @throws Exception
+   */
   private void parameterMapElement(List<XNode> list) throws Exception {
     for (XNode parameterMapNode : list) {
       String id = parameterMapNode.getStringAttribute("id");
@@ -233,6 +322,9 @@ public class XMLMapperBuilder extends BaseBuilder {
         ParameterMapping parameterMapping = builderAssistant.buildParameterMapping(parameterClass, property, javaTypeClass, jdbcTypeEnum, resultMap, modeEnum, typeHandlerClass, numericScale);
         parameterMappings.add(parameterMapping);
       }
+      /**
+       * 为该 parameterMap 以ID 绑定所有属性和类型
+       */
       builderAssistant.addParameterMap(id, parameterClass, parameterMappings);
     }
   }
@@ -251,23 +343,98 @@ public class XMLMapperBuilder extends BaseBuilder {
     return resultMapElement(resultMapNode, Collections.<ResultMapping> emptyList());
   }
 
+  /**
+   * <!ELEMENT resultMap (constructor?,id*,result*,association*,collection*, discriminator?)>
+   * <!ATTLIST resultMap
+   * id CDATA #REQUIRED
+   * type CDATA #REQUIRED
+   * extends CDATA #IMPLIED
+   * autoMapping (true|false) #IMPLIED
+   * >
+   *
+   * <!ELEMENT constructor (idArg*,arg*)>
+   *
+   * <!ELEMENT id EMPTY>
+   * <!ATTLIST id
+   * property CDATA #IMPLIED
+   * javaType CDATA #IMPLIED
+   * column CDATA #IMPLIED
+   * jdbcType CDATA #IMPLIED
+   * typeHandler CDATA #IMPLIED
+   * >
+   *
+   * <!ELEMENT result EMPTY>
+   * <!ATTLIST result
+   * property CDATA #IMPLIED
+   * javaType CDATA #IMPLIED
+   * column CDATA #IMPLIED
+   * jdbcType CDATA #IMPLIED
+   * typeHandler CDATA #IMPLIED
+   * >
+   *
+   * <!ELEMENT collection (constructor?,id*,result*,association*,collection*, discriminator?)>
+   * <!ATTLIST collection
+   * property CDATA #REQUIRED
+   * column CDATA #IMPLIED
+   * javaType CDATA #IMPLIED
+   * ofType CDATA #IMPLIED
+   * jdbcType CDATA #IMPLIED
+   * select CDATA #IMPLIED
+   * resultMap CDATA #IMPLIED
+   * typeHandler CDATA #IMPLIED
+   * notNullColumn CDATA #IMPLIED
+   * columnPrefix CDATA #IMPLIED
+   * resultSet CDATA #IMPLIED
+   * foreignColumn CDATA #IMPLIED
+   * autoMapping (true|false) #IMPLIED
+   * fetchType (lazy|eager) #IMPLIED
+   * >
+   *
+   * <!ELEMENT association (constructor?,id*,result*,association*,collection*, discriminator?)>
+   * <!ATTLIST association
+   * property CDATA #REQUIRED
+   * column CDATA #IMPLIED
+   * javaType CDATA #IMPLIED
+   * jdbcType CDATA #IMPLIED
+   * select CDATA #IMPLIED
+   * resultMap CDATA #IMPLIED
+   * typeHandler CDATA #IMPLIED
+   * notNullColumn CDATA #IMPLIED
+   * columnPrefix CDATA #IMPLIED
+   * resultSet CDATA #IMPLIED
+   * foreignColumn CDATA #IMPLIED
+   * autoMapping (true|false) #IMPLIED
+   * fetchType (lazy|eager) #IMPLIED
+   * >
+   *
+   * <!ELEMENT discriminator (case+)>
+   * <!ATTLIST discriminator
+   * column CDATA #IMPLIED
+   * javaType CDATA #REQUIRED
+   * jdbcType CDATA #IMPLIED
+   * typeHandler CDATA #IMPLIED
+   * >
+   *
+   * 处理每一个 resultMap
+   *
+   */
   private ResultMap resultMapElement(XNode resultMapNode, List<ResultMapping> additionalResultMappings) throws Exception {
     ErrorContext.instance().activity("processing " + resultMapNode.getValueBasedIdentifier());
-    String id = resultMapNode.getStringAttribute("id",
+    String id = resultMapNode.getStringAttribute("id", // 结果ID
         resultMapNode.getValueBasedIdentifier());
-    String type = resultMapNode.getStringAttribute("type",
+    String type = resultMapNode.getStringAttribute("type", // 结果映射的类型
         resultMapNode.getStringAttribute("ofType",
             resultMapNode.getStringAttribute("resultType",
                 resultMapNode.getStringAttribute("javaType"))));
-    String extend = resultMapNode.getStringAttribute("extends");
-    Boolean autoMapping = resultMapNode.getBooleanAttribute("autoMapping");
+    String extend = resultMapNode.getStringAttribute("extends"); // 继承关系
+    Boolean autoMapping = resultMapNode.getBooleanAttribute("autoMapping"); // 是否自动映射
     Class<?> typeClass = resolveClass(type);
     Discriminator discriminator = null;
     List<ResultMapping> resultMappings = new ArrayList<ResultMapping>();
     resultMappings.addAll(additionalResultMappings);
     List<XNode> resultChildren = resultMapNode.getChildren();
     for (XNode resultChild : resultChildren) {
-      if ("constructor".equals(resultChild.getName())) {
+      if ("constructor".equals(resultChild.getName())) { // 解析 构造器映射
         processConstructorElement(resultChild, typeClass, resultMappings);
       } else if ("discriminator".equals(resultChild.getName())) {
         discriminator = processDiscriminatorElement(resultChild, typeClass, resultMappings);
@@ -276,6 +443,9 @@ public class XMLMapperBuilder extends BaseBuilder {
         if ("id".equals(resultChild.getName())) {
           flags.add(ResultFlag.ID);
         }
+        /**
+         * 添加resultMap 中的所有子节点ResultMapping 到集合中
+         */
         resultMappings.add(buildResultMappingFromContext(resultChild, typeClass, flags));
       }
     }
@@ -288,6 +458,15 @@ public class XMLMapperBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   * constructor
+   *    idArg？
+   *    arg
+   * @param resultChild
+   * @param resultType
+   * @param resultMappings
+   * @throws Exception
+   */
   private void processConstructorElement(XNode resultChild, Class<?> resultType, List<ResultMapping> resultMappings) throws Exception {
     List<XNode> argChildren = resultChild.getChildren();
     for (XNode argChild : argChildren) {
@@ -354,6 +533,15 @@ public class XMLMapperBuilder extends BaseBuilder {
     return true;
   }
 
+  /**
+   * constructor 中的 idArg 和 arg 都包含 resultMap
+   * association 也包含 resultMap
+   * @param context
+   * @param resultType
+   * @param flags
+   * @return  ResultMap 的Id
+   * @throws Exception
+   */
   private ResultMapping buildResultMappingFromContext(XNode context, Class<?> resultType, ArrayList<ResultFlag> flags) throws Exception {
     String property = context.getStringAttribute("property");
     String column = context.getStringAttribute("column");
@@ -374,7 +562,16 @@ public class XMLMapperBuilder extends BaseBuilder {
     JdbcType jdbcTypeEnum = resolveJdbcType(jdbcType);
     return builderAssistant.buildResultMapping(resultType, property, column, javaTypeClass, jdbcTypeEnum, nestedSelect, nestedResultMap, notNullColumn, columnPrefix, typeHandlerClass, flags, resulSet, foreignColumn, lazy);
   }
-  
+
+  /**
+   * 如果是 association、collection、case 节点 并且属性 select 为空则去获取该节点下的 ResultMap
+   * 否则返回为空
+   *
+   * @param context
+   * @param resultMappings
+   * @return
+   * @throws Exception
+   */
   private String processNestedResultMappings(XNode context, List<ResultMapping> resultMappings) throws Exception {
     if ("association".equals(context.getName())
         || "collection".equals(context.getName())

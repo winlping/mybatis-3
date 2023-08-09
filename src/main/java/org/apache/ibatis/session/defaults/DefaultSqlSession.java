@@ -238,6 +238,12 @@ public class DefaultSqlSession implements SqlSession {
     return (!autoCommit && dirty) || force;
   }
 
+  /**
+   * 包装参数，主要时针对，方法只有一个参数，并且时 List 类型或者 数组类型
+   * 转换为 (list, obj)、(map, obj)
+   * @param object
+   * @return
+   */
   private Object wrapCollection(final Object object) {
     if (object instanceof List) {
       StrictMap<Object> map = new StrictMap<Object>();

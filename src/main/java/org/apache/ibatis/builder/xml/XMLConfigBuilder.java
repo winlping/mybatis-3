@@ -110,6 +110,15 @@ public class XMLConfigBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   * typeAliases
+   * 可以包含多个 typeAlias、package
+   * <typeAliases>
+   *     <typeAlias alias="" type=""/>
+   *     // 扫描包路经下的所有类
+   *     <package name=""/>
+   * </typeAliases>
+   */
   private void typeAliasesElement(XNode parent) {
     if (parent != null) {
       for (XNode child : parent.getChildren()) {
@@ -134,6 +143,15 @@ public class XMLConfigBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   *   <plugins>
+   *     <plugin interceptor="org.apache.ibatis.builder.ExamplePlugin">
+   *       <property name="pluginProperty" value="100"/>
+   *     </plugin>
+   *   </plugins>
+   * @param parent
+   * @throws Exception
+   */
   private void pluginElement(XNode parent) throws Exception {
     if (parent != null) {
       for (XNode child : parent.getChildren()) {
@@ -141,11 +159,23 @@ public class XMLConfigBuilder extends BaseBuilder {
         Properties properties = child.getChildrenAsProperties();
         Interceptor interceptorInstance = (Interceptor) resolveClass(interceptor).newInstance();
         interceptorInstance.setProperties(properties);
+        // 添加到配置中
         configuration.addInterceptor(interceptorInstance);
       }
     }
   }
 
+  /**
+   * 接口
+   * @link org.apache.ibatis.reflection.factory.ObjectFactory
+   * 的实现
+   * 只存在一个 objectFactory 标签
+   *   <objectFactory type="org.apache.ibatis.builder.ExampleObjectFactory">
+   *     <property name="objectFactoryProperty" value="100"/>
+   *   </objectFactory>
+   * @param context
+   * @throws Exception
+   */
   private void objectFactoryElement(XNode context) throws Exception {
     if (context != null) {
       String type = context.getStringAttribute("type");
@@ -156,6 +186,14 @@ public class XMLConfigBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   * org.apache.ibatis.reflection.wrapper.ObjectWrapperFactory 的实现类
+   *   <objectWrapperFactory type="org.apache.ibatis.builder.ExampleObjectFactory">
+   *     <property name="objectFactoryProperty" value="100"/> property以没有用到
+   *   </objectWrapperFactory>
+   * @param context
+   * @throws Exception
+   */
   private void objectWrapperFactoryElement(XNode context) throws Exception {
     if (context != null) {
       String type = context.getStringAttribute("type");
@@ -164,14 +202,38 @@ public class XMLConfigBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   * 解析Properties 下的属性
+   * properties 包含属性 resource 或 url
+   * properties 包含多个子标签 property
+   * property 包含属性 name 和 value
+   * @param context
+   * @throws Exception
+   */
   private void propertiesElement(XNode context) throws Exception {
     if (context != null) {
-      Properties defaults = context.getChildrenAsProperties();
+      /**
+       *  <properties>
+       *      <property name="" value=""></property>
+       *  </properties>
+       */
+      Properties defaults = context.getChildrenAsProperties();// 以 name: value 的形式组装属性
+      /**
+       * 或者 解析properties 中的 resource 属性
+       * <properties resource="databases/blog/blog-derby.properties"/>
+       */
       String resource = context.getStringAttribute("resource");
+      /**
+       * 或者 解析properties 中的 resource 属性
+       * <properties url="http://..."/>
+       */
       String url = context.getStringAttribute("url");
+
+      // resource 和 URL 不能同时共存
       if (resource != null && url != null) {
         throw new BuilderException("The properties element cannot specify both a URL and a resource based property file reference.  Please specify one or the other.");
       }
+      // resource 或者url 中的配置可以和 property 中的组合在一起，但是如果存在相同的Key 会被resource或者url中的替换
       if (resource != null) {
         defaults.putAll(Resources.getResourceAsProperties(resource));
       } else if (url != null) {
@@ -179,13 +241,30 @@ public class XMLConfigBuilder extends BaseBuilder {
       }
       Properties vars = configuration.getVariables();
       if (vars != null) {
+        // 配置中的 property 可以组合
         defaults.putAll(vars);
       }
+      // 设置解析器中的变量
       parser.setVariables(defaults);
+      // 设置配置中的变量
       configuration.setVariables(defaults);
     }
   }
 
+  /**
+   * Mybatis 配置的设置
+   *   <settings>
+   *     <setting name="cacheEnabled" value="true"/>
+   *     <setting name="lazyLoadingEnabled" value="false"/>
+   *     <setting name="multipleResultSetsEnabled" value="true"/>
+   *     <setting name="useColumnLabel" value="true"/>
+   *     <setting name="useGeneratedKeys" value="false"/>
+   *     <setting name="defaultExecutorType" value="SIMPLE"/>
+   *     <setting name="defaultStatementTimeout" value="25"/>
+   *   </settings>
+   * @param context
+   * @throws Exception
+   */
   private void settingsElement(XNode context) throws Exception {
     if (context != null) {
       Properties props = context.getChildrenAsProperties();
@@ -196,40 +275,85 @@ public class XMLConfigBuilder extends BaseBuilder {
           throw new BuilderException("The setting " + key + " is not known.  Make sure you spelled it correctly (case sensitive).");
         }
       }
+      /** *PARTIAL* NONE ALL*/
       configuration.setAutoMappingBehavior(AutoMappingBehavior.valueOf(props.getProperty("autoMappingBehavior", "PARTIAL")));
+      /** true false */
       configuration.setCacheEnabled(booleanValueOf(props.getProperty("cacheEnabled"), true));
+      /** null 代理工厂 */
       configuration.setProxyFactory((ProxyFactory) createInstance(props.getProperty("proxyFactory")));
+      /** false true 懒加载*/
       configuration.setLazyLoadingEnabled(booleanValueOf(props.getProperty("lazyLoadingEnabled"), false));
+      /** true false 当开启时，任何方法的调用都会加载该对象的所有属性。否则，每个属性会按需加载（参考lazyLoadTriggerMethods).*/
       configuration.setAggressiveLazyLoading(booleanValueOf(props.getProperty("aggressiveLazyLoading"), true));
+      /** 是否允许单一语句返回多结果集（需要兼容驱动）。*/
       configuration.setMultipleResultSetsEnabled(booleanValueOf(props.getProperty("multipleResultSetsEnabled"), true));
+      /** 使用列标签代替列名。不同的驱动在这方面会有不同的表现， 具体可参考相关驱动文档或通过测试这两种不同的模式来观察所用驱动的结果。*/
       configuration.setUseColumnLabel(booleanValueOf(props.getProperty("useColumnLabel"), true));
+      /** 	允许 JDBC 支持自动生成主键，需要驱动兼容。 如果设置为 true 则这个设置强制使用自动生成主键，尽管一些驱动不能兼容但仍可正常工作（比如 Derby）。*/
       configuration.setUseGeneratedKeys(booleanValueOf(props.getProperty("useGeneratedKeys"), false));
+      /** 配置默认的执行器。SIMPLE 就是普通的执行器；REUSE 执行器会重用预处理语句（prepared statements）； BATCH 执行器将重用语句并执行批量更新。*/
       configuration.setDefaultExecutorType(ExecutorType.valueOf(props.getProperty("defaultExecutorType", "SIMPLE")));
+      /** 设置超时时间，它决定驱动等待数据库响应的秒数。 */
       configuration.setDefaultStatementTimeout(integerValueOf(props.getProperty("defaultStatementTimeout"), null));
+      /** 为驱动的结果集获取数量（fetchSize）设置一个提示值。此参数只可以在查询设置中被覆盖。	*/
       configuration.setDefaultFetchSize(integerValueOf(props.getProperty("defaultFetchSize"), null));
+      /** 是否开启自动驼峰命名规则（camel case）映射，即从经典数据库列名 A_COLUMN 到经典 Java 属性名 aColumn 的类似映射。 */
       configuration.setMapUnderscoreToCamelCase(booleanValueOf(props.getProperty("mapUnderscoreToCamelCase"), false));
+      /** 允许在嵌套语句中使用分页（RowBounds）。如果允许使用则设置为false。	*/
       configuration.setSafeRowBoundsEnabled(booleanValueOf(props.getProperty("safeRowBoundsEnabled"), false));
+      /** MyBatis 利用本地缓存机制（Local Cache）防止循环引用（circular references）和加速重复嵌套查询。
+       * 默认值为 SESSION，这种情况下会缓存一个会话中执行的所有查询。 若设置值为 STATEMENT，本地会话仅用在语句执行上，对相同 SqlSession 的不同调用将不会共享数据。
+       */
       configuration.setLocalCacheScope(LocalCacheScope.valueOf(props.getProperty("localCacheScope", "SESSION")));
+      /** OTHER jdbcTypeForNull 默认为其他 */
       configuration.setJdbcTypeForNull(JdbcType.valueOf(props.getProperty("jdbcTypeForNull", "OTHER")));
+      /** 指定哪个对象的方法触发一次延迟加载。*/
       configuration.setLazyLoadTriggerMethods(stringSetValueOf(props.getProperty("lazyLoadTriggerMethods"), "equals,clone,hashCode,toString"));
+      /** 允许在嵌套语句中使用分页（ResultHandler）。如果允许使用则设置为false。	*/
       configuration.setSafeResultHandlerEnabled(booleanValueOf(props.getProperty("safeResultHandlerEnabled"), true));
+      /** 指定动态 SQL 生成的默认语言*/
       configuration.setDefaultScriptingLanguage(resolveClass(props.getProperty("defaultScriptingLanguage")));
+      /** 指定动态 SQL 生成的默认语言 */
       configuration.setCallSettersOnNulls(booleanValueOf(props.getProperty("callSettersOnNulls"), false));
+      /** 指定 MyBatis 增加到日志名称的前缀*/
       configuration.setLogPrefix(props.getProperty("logPrefix"));
+      /** 指定 MyBatis 所用日志的具体实现，未指定时将自动查找。*/
       configuration.setLogImpl(resolveClass(props.getProperty("logImpl")));
+      /** 指定一个提供Configuration实例的类。 这个被返回的Configuration实例用来加载被反序列化对象的懒加载属性值。
+       * 这个类必须包含一个签名方法static Configuration getConfiguration(). (从 3.2.3 版本开始)*/
       configuration.setConfigurationFactory(resolveClass(props.getProperty("configurationFactory")));
     }
   }
 
+  /**
+   *   <environments default="development">
+   *     <environment id="development">
+   *       <transactionManager type="JDBC">
+   *         <property name="" value=""/>
+   *       </transactionManager>
+   *       <dataSource type="UNPOOLED">
+   *         <property name="driver" value="${driver}"/>
+   *         <property name="url" value="${url}"/>
+   *         <property name="username" value="${username}"/>
+   *         <property name="password" value="${password}"/>
+   *       </dataSource>
+   *     </environment>
+   *   </environments>
+   * @param context
+   * @throws Exception
+   */
   private void environmentsElement(XNode context) throws Exception {
     if (context != null) {
       if (environment == null) {
+        // 指定默认的环境
         environment = context.getStringAttribute("default");
       }
       for (XNode child : context.getChildren()) {
         String id = child.getStringAttribute("id");
         if (isSpecifiedEnvironment(id)) {
+          // 解析事务工厂
           TransactionFactory txFactory = transactionManagerElement(child.evalNode("transactionManager"));
+          // 解析数据源
           DataSourceFactory dsFactory = dataSourceElement(child.evalNode("dataSource"));
           DataSource dataSource = dsFactory.getDataSource();
           Environment.Builder environmentBuilder = new Environment.Builder(id)
@@ -241,6 +365,14 @@ public class XMLConfigBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   * <!ELEMENT databaseIdProvider (property*)>
+   * <!ATTLIST databaseIdProvider
+   * type CDATA #REQUIRED
+   * >
+   * @param context
+   * @throws Exception
+   */
   private void databaseIdProviderElement(XNode context) throws Exception {
     DatabaseIdProvider databaseIdProvider = null;
     if (context != null) {
@@ -257,6 +389,14 @@ public class XMLConfigBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   *       <transactionManager type="JDBC">
+   *         <property name="" value=""/>
+   *       </transactionManager>
+   * @param context
+   * @return
+   * @throws Exception
+   */
   private TransactionFactory transactionManagerElement(XNode context) throws Exception {
     if (context != null) {
       String type = context.getStringAttribute("type");
@@ -268,6 +408,17 @@ public class XMLConfigBuilder extends BaseBuilder {
     throw new BuilderException("Environment declaration requires a TransactionFactory.");
   }
 
+  /**
+   *       <dataSource type="UNPOOLED">
+   *         <property name="driver" value="${driver}"/>
+   *         <property name="url" value="${url}"/>
+   *         <property name="username" value="${username}"/>
+   *         <property name="password" value="${password}"/>
+   *       </dataSource>
+   * @param context
+   * @return
+   * @throws Exception
+   */
   private DataSourceFactory dataSourceElement(XNode context) throws Exception {
     if (context != null) {
       String type = context.getStringAttribute("type");
@@ -279,6 +430,17 @@ public class XMLConfigBuilder extends BaseBuilder {
     throw new BuilderException("Environment declaration requires a DataSourceFactory.");
   }
 
+  /**
+   * 列字段 类型处理器
+   *   <typeHandlers>
+   *     <typeHandler javaType="String" jdbcType="VARCHAR" handler="org.apache.ibatis.builder.ExampleTypeHandler"/>
+   *   </typeHandlers>
+   *   注册类型处理器，在类型处理器注册时，会判断是否给了javaType ,如果没给，则检查注解 @MappedTypes
+   *   如果没给 JdbcType,则检查注解 @MappedJdbcTypes
+   *   最终存放在 TYPE_HANDLE_MAP中
+   * @param parent
+   * @throws Exception
+   */
   private void typeHandlerElement(XNode parent) throws Exception {
     if (parent != null) {
       for (XNode child : parent.getChildren()) {
@@ -306,6 +468,30 @@ public class XMLConfigBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   * <!ELEMENT mappers (mapper*,package*)>
+   *
+   * <!ELEMENT mapper EMPTY>
+   * <!ATTLIST mapper
+   * resource CDATA #IMPLIED
+   * url CDATA #IMPLIED
+   * class CDATA #IMPLIED
+   * >
+   *
+   * <!ELEMENT package EMPTY>
+   * <!ATTLIST package
+   * name CDATA #REQUIRED
+   * >
+   * 如果存在 package 子标签则扫描其中的包路经
+   * 如果存在 mapper，其中属性：resource 、url、 class，只能存在一个
+   * resource 指定 mapper xml文件
+   * url指定 网络文件
+   * class指定mapper类
+   * 最终都是注册到configuration 中
+   * configuration.addMapper(mapperInterface);
+   * @param parent
+   * @throws Exception
+   */
   private void mapperElement(XNode parent) throws Exception {
     if (parent != null) {
       for (XNode child : parent.getChildren()) {
@@ -320,7 +506,7 @@ public class XMLConfigBuilder extends BaseBuilder {
             ErrorContext.instance().resource(resource);
             InputStream inputStream = Resources.getResourceAsStream(resource);
             XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, resource, configuration.getSqlFragments());
-            mapperParser.parse();
+            mapperParser.parse();// todo 开始解析XML的mapper文件
           } else if (resource == null && url != null && mapperClass == null) {
             ErrorContext.instance().resource(url);
             InputStream inputStream = Resources.getUrlAsStream(url);

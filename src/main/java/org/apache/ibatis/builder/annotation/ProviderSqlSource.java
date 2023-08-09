@@ -34,6 +34,12 @@ public class ProviderSqlSource implements SqlSource {
   private Method providerMethod;
   private boolean providerTakesParameterObject;
 
+  /**
+   *  SelectProvider InsertProvider DeleteProvider UpdateProvider中的方法最多一个参数，
+   *  并且返回值只能是String，返回得失SQL语句
+   * @param config
+   * @param provider
+   */
   public ProviderSqlSource(Configuration config, Object provider) {
     String providerMethodName = null;
     try {

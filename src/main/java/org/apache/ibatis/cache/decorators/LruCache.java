@@ -23,7 +23,7 @@ import org.apache.ibatis.cache.Cache;
 
 /**
  * Lru (first in, first out) cache decorator
- *
+ * 先进先出
  * @author Clinton Begin
  */
 public class LruCache implements Cache {
@@ -51,6 +51,11 @@ public class LruCache implements Cache {
     keyMap = new LinkedHashMap<Object, Object>(size, .75F, true) {
       private static final long serialVersionUID = 4267176411845948333L;
 
+      /**
+       *
+       * @param eldest 使用的是linkedHashMap 中的first 节点，因此先进先出
+       * @return
+       */
       protected boolean removeEldestEntry(Map.Entry<Object, Object> eldest) {
         boolean tooBig = size() > size;
         if (tooBig) {
