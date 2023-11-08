@@ -57,7 +57,7 @@ public class ManagedTransaction implements Transaction {
   }
 
   public Connection getConnection() throws SQLException {
-    if (this.connection == null) {
+    if (this.connection == null || this.connection.isClosed()) {
       openConnection();
     }
     return this.connection;

@@ -57,7 +57,7 @@ public class JdbcTransaction implements Transaction {
   }
 
   public Connection getConnection() throws SQLException {
-    if (connection == null) {
+    if (connection == null || this.connection.isClosed()) {
       openConnection();
     }
     return connection;
